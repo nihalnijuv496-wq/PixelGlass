@@ -10,7 +10,10 @@ class HourglassWidgetReceiver : GlanceAppWidgetReceiver() {
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
-        appWidgetIds.forEach { TickScheduler.schedule(context, it) }
+        // Android sends this after a reboot too: put the finish alarms back.
+        appWidgetIds.forEach { TickScheduler.scheduleFinish(context, it) }
+        // May be refused when the app is in the background; the picker restarts it on the next timer.
+        TimerService.sync(context)
     }
 
     override fun onDeleted(context: Context, appWidgetIds: IntArray) {
@@ -19,5 +22,6 @@ class HourglassWidgetReceiver : GlanceAppWidgetReceiver() {
             TickScheduler.cancel(context, it)
             TimerStore.remove(context, it)
         }
+        TimerService.sync(context)   // stops the service if no timer is left
     }
 }

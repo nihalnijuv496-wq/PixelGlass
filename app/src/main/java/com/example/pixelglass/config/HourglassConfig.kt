@@ -18,8 +18,14 @@ object HourglassConfig {
     val emptyColor = 0xFF3A3A3C.toInt()
     val sandColor = 0xFFFFD60A.toInt()
 
-    // Behaviour
-    const val showStreamPixel = true       // single falling pixel at the neck
-    const val minTickMillis = 1000L        // never refresh faster than this
+    // Sand physics
+    const val sandSeed = 7L                // decides left/right when a grain has both ways open
+
+    // Falling animation (a grain visibly drops cell by cell before settling)
+    const val animateFall = true
+    const val fallFrameMillis = 140L       // time per cell step of a falling grain
+    const val minPixelIntervalForAnimationMillis = 3000L  // faster timers skip the animation
+
+    // Timers
     val presetMinutes = listOf(1, 5, 10, 25, 60)
 }

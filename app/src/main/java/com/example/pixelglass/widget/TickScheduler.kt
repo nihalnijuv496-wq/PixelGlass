@@ -4,9 +4,12 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import com.example.pixelglass.engine.HourglassEngine
-import kotlin.math.min
 
+/**
+ * One exact, device-waking alarm per widget, set for the moment its timer ends.
+ * The per-pixel ticks come from TimerService; this alarm is what makes sure you get alerted
+ * even if the phone is asleep.
+ */
 object TickScheduler {
     const val extraAppWidgetId = "appWidgetId"
 
@@ -18,23 +21,21 @@ object TickScheduler {
         )
     }
 
-    fun schedule(context: Context, appWidgetId: Int) {
-        val duration = TimerStore.durationMillis(context, appWidgetId)
-        val start = TimerStore.startMillis(context, appWidgetId)
-        val now = System.currentTimeMillis()
-        val end = start + duration
-        if (now >= end) return
-
-        val interval = HourglassEngine.tickIntervalMillis(duration)
-        val nextTick = start + ((now - start) / interval + 1) * interval
-        val triggerAt = min(nextTick, end) + 50   // small slack so rounding lands on the new pixel
+    fun scheduleFinish(context: Context, appWidgetId: Int) {
+        if (TimerStore.isIdle(context, appWidgetId)) {
+            cancel(context, appWidgetId)
+            return
+        }
+        val end = TimerStore.startMillis(context, appWidgetId) +
+                TimerStore.durationMillis(context, appWidgetId)
+        if (end <= System.currentTimeMillis()) return
 
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val pending = pendingIntent(context, appWidgetId)
         try {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC, triggerAt, pending)
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, end, pending)
         } catch (e: SecurityException) {
-            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC, triggerAt, pending)
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, end, pending)
         }
     }
 

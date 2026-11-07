@@ -4,7 +4,6 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import com.example.pixelglass.config.HourglassConfig as Cfg
-import com.example.pixelglass.engine.HourglassEngine
 import com.example.pixelglass.engine.SandState
 import kotlin.math.min
 import kotlin.math.sqrt
@@ -35,21 +34,15 @@ object HourglassRenderer {
         val topCenterY = height / 2f - diamondHeight / 2f
         val bottomCenterY = height / 2f + diamondHeight / 2f
 
-        drawBulb(canvas, centerX, topCenterY, step, state.topCount, streamPixel = false)
-        drawBulb(
-            canvas, centerX, bottomCenterY, step, state.bottomCount,
-            streamPixel = Cfg.showStreamPixel && !state.finished && state.bottomCount > 0
-        )
+        drawBulb(canvas, centerX, topCenterY, step, state.top, flightCell = -1)
+        drawBulb(canvas, centerX, bottomCenterY, step, state.bottom, state.flightCell)
         return bitmap
     }
 
     private fun drawBulb(
         canvas: Canvas, centerX: Float, centerY: Float, step: Float,
-        litCount: Int, streamPixel: Boolean
+        filled: BooleanArray, flightCell: Int
     ) {
-        val lit = BooleanArray(HourglassEngine.totalPixels)
-        for (i in 0 until litCount) lit[HourglassEngine.fillOrder[i]] = true
-
         val half = gridSize * step / 2f
         val inset = step * (1 - Cfg.pixelFill) / 2f
         val radius = step * Cfg.pixelCornerRadius
@@ -59,8 +52,7 @@ object HourglassRenderer {
         for (row in 0 until gridSize) {
             for (col in 0 until gridSize) {
                 val index = row * gridSize + col
-                val isStream = streamPixel && index == 0   // top corner of the bottom bulb
-                paint.color = if (lit[index] || isStream) Cfg.sandColor else Cfg.emptyColor
+                paint.color = if (filled[index] || index == flightCell) Cfg.sandColor else Cfg.emptyColor
                 val left = centerX - half + col * step
                 val top = centerY - half + row * step
                 canvas.drawRoundRect(
