@@ -21,6 +21,14 @@ object HourglassConfig {
     val emptyColor = 0xFF3A3A3C.toInt()
     val sandColor = 0xFFFFD60A.toInt()
 
+    // Porcelain background
+    val porcelainLight = 0xFF3E4044.toInt() // Reflective charcoal highlight
+    val porcelainDark = 0xFF18191B.toInt()  // Deep obsidian base
+    const val glossStrength = 0.35f         // High-contrast wet look
+    // Softer satin gloss
+    // Extra sharp shine
+
+    // 0..1, how strong the shine is
     // Sand physics
     const val sandSeed = 7L                // decides left/right when a grain has both ways open
 
