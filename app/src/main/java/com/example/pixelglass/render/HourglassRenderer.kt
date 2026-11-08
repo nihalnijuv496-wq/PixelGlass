@@ -27,8 +27,9 @@ object HourglassRenderer {
         val availableWidth = width * (1 - 2 * Cfg.paddingFraction)
         val availableHeight = height * (1 - 2 * Cfg.paddingFraction)
         val root2 = sqrt(2f)
-        val step = min(availableWidth, availableHeight / 2f) / (gridSize * root2)
-        val diamondHeight = gridSize * step * root2
+        val cellsWithPlate = gridSize + 2 * Cfg.platePadding
+        val step = min(availableWidth, availableHeight / 2f) / (cellsWithPlate * root2)
+        val diamondHeight = cellsWithPlate * step * root2
 
         val centerX = width / 2f
         val topCenterY = height / 2f - diamondHeight / 2f
@@ -39,6 +40,8 @@ object HourglassRenderer {
         return bitmap
     }
 
+
+
     private fun drawBulb(
         canvas: Canvas, centerX: Float, centerY: Float, step: Float,
         filled: BooleanArray, flightCell: Int
@@ -46,9 +49,19 @@ object HourglassRenderer {
         val half = gridSize * step / 2f
         val inset = step * (1 - Cfg.pixelFill) / 2f
         val radius = step * Cfg.pixelCornerRadius
+        val plateMargin = step * Cfg.platePadding
+        val plateRadius = step * Cfg.plateCornerRadius
 
         canvas.save()
         canvas.rotate(45f, centerX, centerY)
+
+        paint.color = Cfg.plateColor
+        canvas.drawRoundRect(
+            centerX - half - plateMargin, centerY - half - plateMargin,
+            centerX + half + plateMargin, centerY + half + plateMargin,
+            plateRadius, plateRadius, paint
+        )
+
         for (row in 0 until gridSize) {
             for (col in 0 until gridSize) {
                 val index = row * gridSize + col

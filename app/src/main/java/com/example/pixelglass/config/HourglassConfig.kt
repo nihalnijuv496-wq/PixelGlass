@@ -5,7 +5,10 @@ object HourglassConfig {
     // Grid
     const val gridSize = 8                 // n x n pixels per bulb
     const val pixelFill = 0.80f            // 0..1, how much of a cell the pixel covers
-    const val pixelCornerRadius = 0.20f    // fraction of cell size
+    const val pixelCornerRadius = 0f    // fraction of cell size
+    val plateColor = 0xFF000000.toInt()
+    const val platePadding = 0.15f         // plate margin around the grid, as a fraction of cell size
+    const val plateCornerRadius = 0f       // 0 = sharp corners
 
     // Bitmap / layout
     const val bitmapWidthPx = 300
@@ -14,7 +17,7 @@ object HourglassConfig {
     const val backgroundCornerRadiusPx = 48f
 
     // Colors
-    val backgroundColor = 0xFFC9C9CB.toInt()
+    val backgroundColor = 0xFFF4EFEA.toInt()
     val emptyColor = 0xFF3A3A3C.toInt()
     val sandColor = 0xFFFFD60A.toInt()
 
