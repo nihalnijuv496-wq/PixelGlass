@@ -45,15 +45,24 @@ object HourglassEngine {
     private fun dropGrain(bottom: BooleanArray, rng: Random): IntArray {
         if (bottom[0]) return IntArray(0)
         val path = ArrayList<Int>()
-        var cell = 0
-        path += cell
+        var row = 0
+        var col = 0
+        path += 0
         while (true) {
-            val next = nextCell(bottom, cell / n, cell % n, rng)
-            if (next < 0) break
-            cell = next
-            path += cell
+            if (row + 1 < n && col + 1 < n && !bottom[(row + 1) * n + col + 1]) {
+                // Straight down on screen: free fall until something is in the way.
+                row++
+                col++
+            } else {
+                // Touching the pile or the glass: slide to a free side cell, or rest.
+                val next = nextCell(bottom, row, col, rng)
+                if (next < 0) break
+                row = next / n
+                col = next % n
+            }
+            path += row * n + col
         }
-        bottom[cell] = true
+        bottom[row * n + col] = true
         return path.toIntArray()
     }
 
