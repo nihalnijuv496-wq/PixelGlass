@@ -10,6 +10,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.lifecycle.lifecycleScope
 import com.example.pixelglass.widget.HourglassWidget
@@ -22,6 +25,7 @@ import kotlinx.coroutines.launch
 class ConfigActivity : ComponentActivity() {
     private var appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
     private var pendingMillis: Long? = null
+    private var runningTimer by mutableStateOf<RunningTimer?>(null)
 
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) {
@@ -43,20 +47,20 @@ class ConfigActivity : ComponentActivity() {
             return
         }
 
-        val isRunning = !TimerStore.isIdle(this, appWidgetId)
-        val initialSeconds = if (isRunning) {
-            (TimerStore.durationMillis(this, appWidgetId) / 1000L).toInt()
-        } else {
-            5 * 60
+        var initialSeconds = 5 * 60
+        if (!TimerStore.isIdle(this, appWidgetId)) {
+            val duration = TimerStore.durationMillis(this, appWidgetId)
+            runningTimer = RunningTimer(TimerStore.startMillis(this, appWidgetId) + duration, duration)
+            initialSeconds = (duration / 1000L).toInt()
         }
 
         setContent {
             MaterialTheme {
                 TimerScreen(
                     initialSeconds = initialSeconds,
-                    isRunning = isRunning,
+                    runningTimer = runningTimer,
                     onStart = { chooseTimer(it) },
-                    onStop = { stopTimer() }
+                    onReset = { resetTimer() }
                 )
             }
         }
@@ -73,28 +77,31 @@ class ConfigActivity : ComponentActivity() {
         }
     }
 
+    /** Starts the timer and returns to the home screen, where the widget is now running. */
     private fun startTimer(millis: Long) {
         TimerStore.start(this, appWidgetId, millis)
         TickScheduler.scheduleFinish(this, appWidgetId)
         TimerService.sync(this)
-        refreshWidgetAndClose()
+        lifecycleScope.launch {
+            refreshWidget()
+            setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId))
+            finish()
+        }
     }
 
-    private fun stopTimer() {
+    /** Stops the timer and shows the wheels again so a new one can be set. */
+    private fun resetTimer() {
         TickScheduler.cancel(this, appWidgetId)
         TimerStore.stop(this, appWidgetId)
         TimerService.sync(this)
-        refreshWidgetAndClose()
+        runningTimer = null
+        lifecycleScope.launch { refreshWidget() }
     }
 
-    private fun refreshWidgetAndClose() {
-        lifecycleScope.launch {
-            runCatching {
-                val glanceId = GlanceAppWidgetManager(this@ConfigActivity).getGlanceIdBy(appWidgetId)
-                HourglassWidget().refresh(this@ConfigActivity, glanceId)
-            }
-            setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId))
-            finish()
+    private suspend fun refreshWidget() {
+        runCatching {
+            val glanceId = GlanceAppWidgetManager(this).getGlanceIdBy(appWidgetId)
+            HourglassWidget().refresh(this, glanceId)
         }
     }
 }

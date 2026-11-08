@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.lifecycle.lifecycleScope
+import com.example.pixelglass.ui.RunningTimer
 import com.example.pixelglass.ui.TimerScreen
 import com.example.pixelglass.ui.enableLightEdgeToEdge
 import com.example.pixelglass.widget.HourglassWidget
@@ -24,7 +25,7 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private var pendingMillis: Long? = null
-    private var running by mutableStateOf(false)
+    private var runningTimer by mutableStateOf<RunningTimer?>(null)
 
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) {
@@ -35,14 +36,15 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableLightEdgeToEdge()
-        running = TimerStore.timedWidgetIds(this).isNotEmpty()
+        runningTimer = readRunningTimer()
+        val initialSeconds = runningTimer?.let { (it.durationMillis / 1000L).toInt() } ?: (5 * 60)
         setContent {
             MaterialTheme {
                 TimerScreen(
-                    initialSeconds = 5 * 60,
-                    isRunning = running,
+                    initialSeconds = initialSeconds,
+                    runningTimer = runningTimer,
                     onStart = { chooseTimer(it) },
-                    onStop = { stopOnAllWidgets() }
+                    onReset = { stopOnAllWidgets() }
                 )
             }
         }
@@ -50,7 +52,18 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        running = TimerStore.timedWidgetIds(this).isNotEmpty()
+        runningTimer = readRunningTimer()
+    }
+
+    /** The timer that ends soonest; if every timer has finished, the latest one. */
+    private fun readRunningTimer(): RunningTimer? {
+        val now = System.currentTimeMillis()
+        val timers = TimerStore.timedWidgetIds(this).map {
+            val duration = TimerStore.durationMillis(this, it)
+            RunningTimer(TimerStore.startMillis(this, it) + duration, duration)
+        }
+        return timers.filter { it.endMillis > now }.minByOrNull { it.endMillis }
+            ?: timers.maxByOrNull { it.endMillis }
     }
 
     private fun chooseTimer(millis: Long) {
@@ -82,7 +95,7 @@ class MainActivity : ComponentActivity() {
             }
             TimerService.sync(this@MainActivity)
             glanceIds.forEach { runCatching { HourglassWidget().refresh(this@MainActivity, it) } }
-            running = true
+            runningTimer = readRunningTimer()
         }
     }
 
@@ -97,7 +110,7 @@ class MainActivity : ComponentActivity() {
             }
             TimerService.sync(this@MainActivity)
             glanceIds.forEach { runCatching { HourglassWidget().refresh(this@MainActivity, it) } }
-            running = false
+            runningTimer = null
         }
     }
 }

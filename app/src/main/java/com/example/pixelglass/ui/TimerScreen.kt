@@ -59,6 +59,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.runtime.mutableLongStateOf
 
 private val screenBackground = Color(0xFFF7F7F7)
 private val chipBorder = Color(0xFFD6D6D6)
@@ -73,12 +75,15 @@ fun ComponentActivity.enableLightEdgeToEdge() {
     )
 }
 
+/** A timer that is running (or has just finished) on a widget. */
+data class RunningTimer(val endMillis: Long, val durationMillis: Long)
+
 @Composable
 fun TimerScreen(
     initialSeconds: Int,
-    isRunning: Boolean,
+    runningTimer: RunningTimer?,
     onStart: (Long) -> Unit,
-    onStop: () -> Unit
+    onReset: () -> Unit
 ) {
     var hours by remember { mutableIntStateOf((initialSeconds / 3600) % 24) }
     var minutes by remember { mutableIntStateOf((initialSeconds / 60) % 60) }
@@ -104,28 +109,76 @@ fun TimerScreen(
             )
         }
 
-        Spacer(Modifier.weight(1f))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            WheelPicker(count = 24, value = hours, onValueChange = { hours = it })
-            Colon()
-            WheelPicker(count = 60, value = minutes, onValueChange = { minutes = it })
-            Colon()
-            WheelPicker(count = 60, value = seconds, onValueChange = { seconds = it })
-        }
-        Spacer(Modifier.weight(1f))
+        if (runningTimer != null) {
+            RunningContent(runningTimer, onReset)
+        } else {
+            Spacer(Modifier.weight(1f))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                WheelPicker(count = 24, value = hours, onValueChange = { hours = it })
+                Colon()
+                WheelPicker(count = 60, value = minutes, onValueChange = { minutes = it })
+                Colon()
+                WheelPicker(count = 60, value = seconds, onValueChange = { seconds = it })
+            }
+            Spacer(Modifier.weight(1f))
 
-        PresetChips(HourglassConfig.presetMinutes) { presetMinutes ->
-            hours = presetMinutes / 60
-            minutes = presetMinutes % 60
-            seconds = 0
-        }
+            PresetChips(HourglassConfig.presetMinutes) { presetMinutes ->
+                hours = presetMinutes / 60
+                minutes = presetMinutes % 60
+                seconds = 0
+            }
 
-        Spacer(Modifier.height(32.dp))
-        PlayButton(enabled = totalSeconds > 0) { onStart(totalSeconds * 1000L) }
-        if (isRunning) {
-            TextButton(onClick = onStop) { Text("Stop and reset", color = playBlue) }
+            Spacer(Modifier.height(32.dp))
+            PlayButton(enabled = totalSeconds > 0) { onStart(totalSeconds * 1000L) }
+            Spacer(Modifier.height(24.dp))
         }
-        Spacer(Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun ColumnScope.RunningContent(timer: RunningTimer, onReset: () -> Unit) {
+    var remainingMillis by remember(timer.endMillis) {
+        mutableLongStateOf((timer.endMillis - System.currentTimeMillis()).coerceAtLeast(0L))
+    }
+    LaunchedEffect(timer.endMillis) {
+        while (true) {
+            remainingMillis = (timer.endMillis - System.currentTimeMillis()).coerceAtLeast(0L)
+            if (remainingMillis == 0L) break
+            val untilNextSecond = remainingMillis % 1000L
+            delay(if (untilNextSecond == 0L) 1000L else untilNextSecond)   // tick on the second
+        }
+    }
+
+    val shown = ((remainingMillis + 999L) / 1000L).toInt()   // round up: 00:00:01 until it ends
+    Spacer(Modifier.weight(1f))
+    Text(
+        "%02d:%02d:%02d".format(shown / 3600, (shown / 60) % 60, shown % 60),
+        fontSize = 64.sp,
+        fontWeight = FontWeight.Light,
+        color = Color.Black
+    )
+    if (remainingMillis == 0L) {
+        Text("Time's up", fontSize = 20.sp, color = playBlue, modifier = Modifier.padding(top = 8.dp))
+    }
+    Spacer(Modifier.weight(1f))
+    ResetButton(onReset)
+    Spacer(Modifier.height(24.dp))
+}
+
+@Composable
+private fun ResetButton(onClick: () -> Unit) {
+    val shape = RoundedCornerShape(28.dp)
+    Box(
+        modifier = Modifier
+            .width(140.dp)
+            .height(56.dp)
+            .shadow(6.dp, shape)
+            .clip(shape)
+            .background(Color.White)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text("Reset", fontSize = 18.sp, color = playBlue)
     }
 }
 
