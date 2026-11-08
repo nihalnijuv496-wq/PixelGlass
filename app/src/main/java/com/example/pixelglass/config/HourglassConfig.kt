@@ -27,5 +27,5 @@ object HourglassConfig {
     const val minPixelIntervalForAnimationMillis = 3000L  // faster timers skip the animation
 
     // Timers
-    val presetMinutes = listOf(1, 5, 10, 25, 60)
+    val presetMinutes = listOf(1, 5, 10, 15, 25, 60)
 }
