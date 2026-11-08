@@ -57,36 +57,26 @@ object HourglassEngine {
         return path.toIntArray()
     }
 
-    /** After the neck cell is emptied, the sand above slides down until everything rests. */
-    private fun settleTop(top: BooleanArray, rng: Random) {
-        var moved = true
-        while (moved) {
-            moved = false
-            for (sum in 2 * n - 3 downTo 0) {            // lowest rows on screen first
-                for (r in maxOf(0, sum - (n - 1))..minOf(n - 1, sum)) {
-                    val idx = r * n + (sum - r)
-                    if (!top[idx]) continue
-                    val next = nextCell(top, r, sum - r, rng)
-                    if (next >= 0) {
-                        top[idx] = false
-                        top[next] = true
-                        moved = true
-                    }
-                }
+    private fun buildFrames(): List<Frame> {
+        // Removal order: top screen row first, each row emptied from both ends toward the middle.
+        val removalOrder = ArrayList<Int>()
+        for (sum in 0..2 * n - 2) {
+            val cells = (maxOf(0, sum - (n - 1))..minOf(n - 1, sum)).map { r -> r * n + (sum - r) }
+            var lo = 0
+            var hi = cells.size - 1
+            while (lo <= hi) {
+                removalOrder += cells[lo++]
+                if (lo <= hi) removalOrder += cells[hi--]
             }
         }
-    }
 
-    private fun buildFrames(): List<Frame> {
-        val topRng = Random(Cfg.sandSeed)
         val bottomRng = Random(Cfg.sandSeed + 1)
         val top = BooleanArray(totalPixels) { true }
         val bottom = BooleanArray(totalPixels)
         val list = ArrayList<Frame>()
         list += Frame(top.copyOf(), bottom.copyOf(), IntArray(0))
-        repeat(totalPixels) {
-            top[totalPixels - 1] = false                 // lowest top cell = the neck
-            settleTop(top, topRng)
+        for (k in 0 until totalPixels) {
+            top[removalOrder[k]] = false
             val path = dropGrain(bottom, bottomRng)
             list += Frame(top.copyOf(), bottom.copyOf(), path)
         }
